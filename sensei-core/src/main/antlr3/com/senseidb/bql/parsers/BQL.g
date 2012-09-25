@@ -69,9 +69,10 @@ BNF Grammar for BQL
 
 <non_variable_value_list> ::= '(' <value> ( ',' <value> )* ')'
 
-<python_style_list> ::= '[' <python_style_value> ( ',' <python_style_value> )* ']'
+<python_style_list> ::= '[' <python_style_value>? ( ',' <python_style_value> )* ']'
 
-<python_style_dict> ::= '{' <key_value_pair> ( ',' <key_value_pair> )* '}'
+<python_style_dict> ::= '{''}' 
+                       | '{' <key_value_pair> ( ',' <key_value_pair> )* '}'
 
 <python_style_value> ::= <value>
                        | <python_style_list>
@@ -313,6 +314,7 @@ BNF Grammar for BQL
 
 <primary> ::= <par_expression>
             | <literal>
+            | java_method identifier_suffix
             | <java_ident> ('.' <java_method>)* [<identifier_suffix>]
 
 <java_ident> ::= <boxed_type>
@@ -463,12 +465,6 @@ import java.text.SimpleDateFormat;
 
 @parser::members {
 
-    private static enum KeyType {
-      STRING_LITERAL,
-      IDENT,
-      STRING_LITERAL_AND_IDENT
-    }
-
     private static final int DEFAULT_REQUEST_OFFSET = 0;
     private static final int DEFAULT_REQUEST_COUNT = 10;
     private static final int DEFAULT_REQUEST_MAX_PER_GROUP = 10;
@@ -526,7 +522,7 @@ import java.text.SimpleDateFormat;
         _supportedClasses.add("Math");
         _supportedClasses.add("String");
         _supportedClasses.add("System");
-
+        
         _compatibleFacetTypes = new HashMap<String, Set<String>>();
         _compatibleFacetTypes.put("range", new HashSet<String>(Arrays.asList(new String[]
                                                                {
@@ -648,10 +644,10 @@ import java.text.SimpleDateFormat;
             return true;
         }
 
-        if (columnType.equals("long") || columnType.equals("int") || columnType.equals("short")) {
+        if (columnType.equals("long") || columnType.equals("aint") || columnType.equals("int") || columnType.equals("short")) {
             return !(value instanceof Float || value instanceof String || value instanceof Boolean);
         }
-        else if (columnType.equals("float") || columnType.equals("double")) {
+        else if (columnType.equals("float")  || columnType.equals("int") || columnType.equals("double")) {
             return !(value instanceof String || value instanceof Boolean);
         }
         else if (columnType.equals("string") || columnType.equals("char")) {
@@ -898,7 +894,7 @@ import java.text.SimpleDateFormat;
         Object newTo = result[0];
         Boolean newIncludeUpper = (Boolean) result[1];
 
-        if (newFrom != null && newTo != null) {
+        if (newFrom != null && newTo != null && !newFrom.toString().startsWith("$")&& !newTo.toString().startsWith("$")) {
             if (compareValues(newFrom, newTo) > 0 ||
                 (compareValues(newFrom, newTo) == 0) && (!newIncludeLower || !newIncludeUpper)) {
                 // This error is in general detected late, so the token
@@ -2321,7 +2317,7 @@ python_style_list returns [JSONArray json]
 @init {
     $json = new JSONArray();
 }
-    :   '[' v=python_style_value
+    :   '[' v=python_style_value?
         {
             $json.put($v.val);
         }
@@ -2336,7 +2332,8 @@ python_style_dict returns [JSONObject json]
 @init {
     $json = new JSONObject();
 }
-    :   '{' p=key_value_pair[KeyType.STRING_LITERAL]
+    :   '{''}'        |
+        '{' p=key_value_pair[true]
         {
             try {
                 $json.put($p.key, $p.val);
@@ -2345,7 +2342,7 @@ python_style_dict returns [JSONObject json]
                 throw new FailedPredicateException(input, "python_style_dict", "JSONException: " + err.getMessage());
             }
         }
-        (COMMA p=key_value_pair[KeyType.STRING_LITERAL]
+        (COMMA p=key_value_pair[true]
             {
                 try {
                     $json.put($p.key, $p.val);
@@ -2420,17 +2417,17 @@ except_clause returns [Object json]
     ;
   
 predicate_props returns [JSONObject json]
-    :   WITH^ prop_list[KeyType.STRING_LITERAL]
+    :   WITH^ prop_list[true]
         {
             $json = $prop_list.json;
         }
     ;
 
-prop_list[KeyType keyType] returns [JSONObject json]
+prop_list[boolean needKeyInString] returns [JSONObject json]
 @init {
     $json = new JSONObject();
 }
-    :   LPAR p=key_value_pair[keyType]
+    :   LPAR p=key_value_pair[needKeyInString]
         {
             try {
                 $json.put($p.key, $p.val);
@@ -2439,7 +2436,7 @@ prop_list[KeyType keyType] returns [JSONObject json]
                 throw new FailedPredicateException(input, "prop_list", "JSONException: " + err.getMessage());
             }
         }
-        (COMMA p=key_value_pair[keyType]
+        (COMMA p=key_value_pair[needKeyInString]
             {
                 try {
                     $json.put($p.key, $p.val);
@@ -2451,17 +2448,15 @@ prop_list[KeyType keyType] returns [JSONObject json]
         )* RPAR
     ;
 
-key_value_pair[KeyType keyType] returns [String key, Object val]
+key_value_pair[boolean needKeyInString] returns [String key, Object val]
 scope {
-    KeyType type
+    boolean needString;
 }
 @init {
-    $key_value_pair::type = keyType;
+    $key_value_pair::needString = needKeyInString;
 }
-    :   ( { $key_value_pair::type == KeyType.STRING_LITERAL ||
-            $key_value_pair::type == KeyType.STRING_LITERAL_AND_IDENT}?=> STRING_LITERAL
-        | { $key_value_pair::type == KeyType.IDENT ||
-            $key_value_pair::type == KeyType.STRING_LITERAL_AND_IDENT}?=> IDENT
+    :   ( {$key_value_pair::needString}?=> STRING_LITERAL
+        | {!$key_value_pair::needString}?=> IDENT
         )
         COLON (v=value | vs=python_style_list | vd=python_style_dict)
         {
@@ -2640,7 +2635,7 @@ boxed_type
 limited_type
     :   'String'
     |   'System'
-    |   'Math'
+    |   'Math'     
     ;
 
 variable_modifier
@@ -2985,7 +2980,8 @@ cast_expression
 
 primary
     :   par_expression
-    |   literal
+    |   literal   
+    |   java_method identifier_suffix
     |   java_ident ('.' java_method)* identifier_suffix?
         {
             String var = $java_ident.text;
@@ -3000,7 +2996,7 @@ primary
                                                    "primary",
                                                    "Variable or class \"" + var + "\" is not defined.");
             }
-        }
+        }        
     ;
 
 java_ident
@@ -3059,7 +3055,7 @@ relevance_model_clause returns [JSONObject json]
 @init {
     $json = new JSONObject();
 }
-    :   USING RELEVANCE MODEL IDENT prop_list[KeyType.STRING_LITERAL_AND_IDENT] model=relevance_model?
+    :   USING RELEVANCE MODEL IDENT prop_list[false] model=relevance_model?
         {
             try {
                 if (model == null) {
