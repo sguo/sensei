@@ -143,7 +143,7 @@ public abstract class QueryConstructor
     }
     else
     {
-        // the olde code path, now turned off;
+        // the old code path, now is turned off;
 //      return new RelevanceQuery(baseQuery, jsonRelevance);
       
       ScoreAugmentFunction func = RelevanceFunctionBuilder.build(jsonRelevance);

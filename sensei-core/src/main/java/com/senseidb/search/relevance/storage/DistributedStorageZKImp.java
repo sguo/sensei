@@ -4,9 +4,12 @@ package com.senseidb.search.relevance.storage;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.senseidb.search.relevance.RelevanceFunctionBuilder;
 import com.senseidb.search.relevance.RuntimeRelevanceFunction.RuntimeRelevanceFunctionFactory;
 
 
@@ -38,10 +41,23 @@ public class DistributedStorageZKImp implements DistributedStorage
   @Override
   public Map<String, RuntimeRelevanceFunctionFactory> loadAllModels() {
     
-    // TODO: convert the json to java object model;
     HashMap<String, String> jsonModels = _zkDataAccessor.getZookeeperData();
-
-    return null;
+    Map<String, RuntimeRelevanceFunctionFactory> models = new HashMap<String, RuntimeRelevanceFunctionFactory>();
+    for(Map.Entry<String, String> entry : jsonModels.entrySet())
+    {
+      String modelName = entry.getKey();
+      String modelJsonString = entry.getValue();
+      
+      JSONObject modelJson;
+      try {
+        modelJson = new JSONObject(modelJsonString);
+        RuntimeRelevanceFunctionFactory rrfFactory = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
+        models.put(modelName, rrfFactory);
+      } catch (JSONException e) {
+        LOGGER.error("Can not convert the loaded json string model to json object", e);
+      }
+    }
+    return models;
   }
 
   @Override
