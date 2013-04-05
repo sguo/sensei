@@ -12,6 +12,7 @@ import com.senseidb.search.relevance.impl.CompilationHelper.DataTable;
 import com.senseidb.search.relevance.impl.CustomMathModel;
 import com.senseidb.search.relevance.impl.RelevanceException;
 import com.senseidb.search.relevance.impl.RelevanceJSONConstants;
+import com.senseidb.search.relevance.storage.InMemModelStorage;
 import com.senseidb.search.req.ErrorType;
 
 public class RelevanceFunctionBuilder
@@ -90,14 +91,14 @@ public class RelevanceFunctionBuilder
     {
       String modelName = jsonRelevance.getString(RelevanceJSONConstants.KW_PREDEFINED);
       
-      if(ModelStorage.hasPreloadedModel(modelName))
+      if(InMemModelStorage.hasPreloadedModel(modelName))
       {
-        CustomRelevanceFunctionFactory crfFactory = ModelStorage.getPreloadedModel(modelName); 
+        CustomRelevanceFunctionFactory crfFactory = InMemModelStorage.getPreloadedModel(modelName); 
         return crfFactory.build();
       }
-      else if (ModelStorage.hasRuntimeModel(modelName))
+      else if (InMemModelStorage.hasRuntimeModel(modelName))
       {
-        RuntimeRelevanceFunctionFactory rrfFactory = ModelStorage.getRuntimeModel(modelName);
+        RuntimeRelevanceFunctionFactory rrfFactory = InMemModelStorage.getRuntimeModel(modelName);
         return rrfFactory.build();
       }
       else
@@ -129,10 +130,10 @@ public class RelevanceFunctionBuilder
         if(jsonSaveAS.has(RelevanceJSONConstants.KW_OVERWRITE))
           overwrite = jsonSaveAS.getBoolean(RelevanceJSONConstants.KW_OVERWRITE);
         
-        if((ModelStorage.hasRuntimeModel(newRuntimeName) || ModelStorage.hasPreloadedModel(newRuntimeName)) && (overwrite == false))
+        if((InMemModelStorage.hasRuntimeModel(newRuntimeName) || InMemModelStorage.hasPreloadedModel(newRuntimeName)) && (overwrite == false))
           throw new IllegalArgumentException("the runtime model name " + newRuntimeName + " already exists, or you did not ask to overwrite the old model. Set \"overwrite\":true in the json will replace the old model if you want."); 
 
-        ModelStorage.injectRuntimeModel(newRuntimeName, rrfFactory);
+        InMemModelStorage.injectRuntimeModel(newRuntimeName, rrfFactory);
       }
       
       return  sm;     

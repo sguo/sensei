@@ -1,12 +1,14 @@
-package com.senseidb.search.relevance;
+package com.senseidb.search.relevance.storage;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import com.senseidb.search.relevance.CustomRelevanceFunction;
+import com.senseidb.search.relevance.RuntimeRelevanceFunction;
 import com.senseidb.search.relevance.CustomRelevanceFunction.CustomRelevanceFunctionFactory;
 import com.senseidb.search.relevance.RuntimeRelevanceFunction.RuntimeRelevanceFunctionFactory;
 
-public class ModelStorage
+public class InMemModelStorage
 {
 
   /**
