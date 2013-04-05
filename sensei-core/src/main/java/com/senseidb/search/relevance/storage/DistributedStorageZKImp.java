@@ -21,7 +21,7 @@ public class DistributedStorageZKImp implements DistributedStorage
 {
   private static final Logger LOGGER = LoggerFactory.getLogger(DistributedStorageZKImp.class);
   
-  private final ZkModelDataAccessor _zkDataAccessor;
+  private static ZkModelDataAccessor _zkDataAccessor = null;
 
   public DistributedStorageZKImp(ZkModelDataAccessor zkDataAccessor)
   {
@@ -63,5 +63,26 @@ public class DistributedStorageZKImp implements DistributedStorage
   @Override
   public void emptyModels() {
     _zkDataAccessor.emptyZookeeperData();
+  }
+
+  
+  public static class DistributedStorageFactory{
+    private DistributedStorageFactory()
+    {
+    }
+    
+    private static DistributedStorage _distributedStorage = null;
+    
+    public static void initialization(DistributedStorage distributedStorage)
+    {
+      _distributedStorage = distributedStorage;
+    }
+    public static DistributedStorage getDistributedStorage() throws Exception
+    {
+      if(_distributedStorage == null)
+        throw new Exception("No distributed model storage accesor was initialized.");
+      else
+        return _distributedStorage;
+    }
   }
 }

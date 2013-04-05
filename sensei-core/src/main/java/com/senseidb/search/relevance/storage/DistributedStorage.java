@@ -6,6 +6,9 @@ import com.senseidb.search.relevance.RuntimeRelevanceFunction.RuntimeRelevanceFu
 
 public interface DistributedStorage {
 
+  public static String REL_STORE_ROOT = "relevanceStore";
+  
+  
   public void addModel(String name, String model, boolean overwrite);
   public void delModel(String name);
   public Map<String, RuntimeRelevanceFunctionFactory> loadAllModels();

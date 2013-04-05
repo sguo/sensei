@@ -38,7 +38,15 @@ public class ZkModelDataAccessor
   private String    _zkPath;    // the root path to store the relevance models;
   
   
-  public ZkModelDataAccessor(String zkAddress, int zkPort, int zkTimeOut, String zkPath) throws IOException
+  public ZkModelDataAccessor(String zkURL, int zkTimeOut, String zkPath) throws IOException
+  {
+    this(zkURL.substring(0, zkURL.indexOf(":")), 
+         zkURL.substring(zkURL.indexOf(":")+1).trim(), 
+         zkTimeOut, 
+         zkPath);
+  }
+  
+  public ZkModelDataAccessor(String zkAddress, String zkPort, int zkTimeOut, String zkPath) throws IOException
   {
     _zkPath = zkPath.startsWith("/")? zkPath: ("/"+zkPath);;
     _id = InetAddress.getLocalHost().getHostName() + _idGenerator.getAndIncrement();
@@ -209,7 +217,7 @@ public class ZkModelDataAccessor
   public static void main(String[] args) throws IOException
   {
     String zkAddress = "127.0.0.1";
-    int zkPort = 2121;
+    String zkPort = "2121";
     int zkTimeOut = 30000;
     String zkPath = "SenseiRelevance";
     ZkModelDataAccessor zDataAccessor = new ZkModelDataAccessor(zkAddress, zkPort, zkTimeOut, zkPath);

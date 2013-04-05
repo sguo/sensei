@@ -38,36 +38,29 @@ public class InMemModelStorage
     runtimeCRFMap.put(name, rrf);
   }
   
+  public static void injectRuntimeModel(Map<String, RuntimeRelevanceFunctionFactory> crfMap)
+  {
+    runtimeCRFMap.putAll(crfMap);
+  }
+  
   public static boolean hasRuntimeModel(String modelName)
   {
-    if(runtimeCRFMap.containsKey(modelName))
-      return true;
-    else
-      return false;
+    return runtimeCRFMap.containsKey(modelName);
   }
   
   public static boolean hasPreloadedModel(String modelName)
   {
-    if(preloadedCRFMap.containsKey(modelName))
-      return true;
-    else
-      return false;
+    return preloadedCRFMap.containsKey(modelName);
   }
   
   public static RuntimeRelevanceFunctionFactory getRuntimeModel(String modelName)
   {
-    if(runtimeCRFMap.containsKey(modelName))
-      return runtimeCRFMap.get(modelName);
-    else
-      return null;
+    return runtimeCRFMap.get(modelName);
   }
   
   public static CustomRelevanceFunctionFactory getPreloadedModel(String modelName)
   {
-    if(preloadedCRFMap.containsKey(modelName))
-      return preloadedCRFMap.get(modelName);
-    else
-      return null;
+    return preloadedCRFMap.get(modelName);
   }
   
   

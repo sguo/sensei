@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.IntSet;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,7 +90,12 @@ import com.senseidb.search.query.TimeRetentionFilter;
 import com.senseidb.search.relevance.CustomRelevanceFunction.CustomRelevanceFunctionFactory;
 import com.senseidb.search.relevance.ExternalRelevanceDataStorage;
 import com.senseidb.search.relevance.ExternalRelevanceDataStorage.RelevanceObjPlugin;
+import com.senseidb.search.relevance.RuntimeRelevanceFunction.RuntimeRelevanceFunctionFactory;
+import com.senseidb.search.relevance.storage.DistributedStorage;
+import com.senseidb.search.relevance.storage.DistributedStorageZKImp;
+import com.senseidb.search.relevance.storage.DistributedStorageZKImp.DistributedStorageFactory;
 import com.senseidb.search.relevance.storage.InMemModelStorage;
+import com.senseidb.search.relevance.storage.ZkModelDataAccessor;
 import com.senseidb.search.req.AbstractSenseiRequest;
 import com.senseidb.search.req.AbstractSenseiResult;
 import com.senseidb.search.req.SenseiSystemInfo;
@@ -298,8 +304,7 @@ public class SenseiServerBuilder implements SenseiConfParams{
     pluginRegistry = SenseiPluginRegistry.build(_senseiConf);
     pluginRegistry.start();
     
-    processRelevanceFunctionPlugins(pluginRegistry);
-    processRelevanceExternalObjectPlugins(pluginRegistry);
+    processRelevancePreloading(pluginRegistry, _senseiConf);
 
     _gateway = pluginRegistry.getBeanByFullPrefix(SENSEI_GATEWAY, SenseiGateway.class);
     _schemaDoc = loadSchema(confDir);
@@ -317,7 +322,7 @@ public class SenseiServerBuilder implements SenseiConfParams{
     pluginRegistry = SenseiPluginRegistry.build(_senseiConf);
     pluginRegistry.start();
     
-    processRelevanceFunctionPlugins(pluginRegistry);
+    processRelevancePreloading(pluginRegistry, _senseiConf);
 
     _gateway = pluginRegistry.getBeanByFullPrefix(SENSEI_GATEWAY, SenseiGateway.class);
 
@@ -325,7 +330,42 @@ public class SenseiServerBuilder implements SenseiConfParams{
     _senseiSchema = SenseiSchema.build(_schemaDoc);
   }
 
-  private void processRelevanceFunctionPlugins(SenseiPluginRegistry pluginRegistry)
+  /**
+   * Load all the relevance related data, including custom relevance in java object format, stored relevance model in json format,
+   * also the custom object used by relevance model;
+   * 
+   * @param pluginRegistry
+   * @param senseiConf 
+   * @throws IOException 
+   */
+  private void processRelevancePreloading(SenseiPluginRegistry pluginRegistry, Configuration senseiConf) throws IOException
+  {
+    processCustomRelevanceFunctionPlugins(pluginRegistry);
+    processStoredRelevanceModels(senseiConf);
+    
+    processRelevanceExternalObjectPlugins(pluginRegistry);
+  }
+  
+  private void processStoredRelevanceModels(Configuration senseiConf) throws IOException
+  {
+    String modelLocation = senseiConf.getString(SENSEI_RELEVANCE_MODEL_STORAGE);
+    if(modelLocation == null)
+    {
+      String clusterName = senseiConf.getString(SENSEI_CLUSTER_NAME);
+      modelLocation = clusterName + "/" + DistributedStorage.REL_STORE_ROOT; 
+    }
+    
+    String zookeeperURL = senseiConf.getString(SENSEI_CLUSTER_URL);
+    int zkTimeOut = senseiConf.getInt(SENSEI_CLUSTER_TIMEOUT, 30000);
+    ZkModelDataAccessor zkDataAccessor = new ZkModelDataAccessor(zookeeperURL, zkTimeOut, modelLocation);
+    DistributedStorage distributedStorage = new DistributedStorageZKImp(zkDataAccessor);
+    DistributedStorageFactory.initialization(distributedStorage);
+    
+    Map<String, RuntimeRelevanceFunctionFactory> allModels = distributedStorage.loadAllModels();
+    InMemModelStorage.injectRuntimeModel(allModels);
+  }
+
+  private void processCustomRelevanceFunctionPlugins(SenseiPluginRegistry pluginRegistry)
   {
     Map<String, CustomRelevanceFunctionFactory> map = pluginRegistry.getNamedBeansByType(CustomRelevanceFunctionFactory.class);
     Iterator<String> it = map.keySet().iterator();
