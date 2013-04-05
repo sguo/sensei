@@ -11,6 +11,8 @@ import java.io.IOException;
  */
 public interface MsgDispatcher
 {
+  public static final String MSG_ROOT = "senseiMsg";
+  
   void initialization() throws IOException;
   
   void dispatchMessage(String msgType, String message) throws IOException;

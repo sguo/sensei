@@ -91,9 +91,11 @@ import com.senseidb.search.relevance.CustomRelevanceFunction.CustomRelevanceFunc
 import com.senseidb.search.relevance.ExternalRelevanceDataStorage;
 import com.senseidb.search.relevance.ExternalRelevanceDataStorage.RelevanceObjPlugin;
 import com.senseidb.search.relevance.RuntimeRelevanceFunction.RuntimeRelevanceFunctionFactory;
+import com.senseidb.search.relevance.message.MsgDispatcher;
+import com.senseidb.search.relevance.message.MsgDispatcherImpl;
 import com.senseidb.search.relevance.storage.DistributedStorage;
+import com.senseidb.search.relevance.storage.DistributedStorageFactory;
 import com.senseidb.search.relevance.storage.DistributedStorageZKImp;
-import com.senseidb.search.relevance.storage.DistributedStorageZKImp.DistributedStorageFactory;
 import com.senseidb.search.relevance.storage.InMemModelStorage;
 import com.senseidb.search.relevance.storage.ZkModelDataAccessor;
 import com.senseidb.search.req.AbstractSenseiRequest;
@@ -355,14 +357,22 @@ public class SenseiServerBuilder implements SenseiConfParams{
       modelLocation = clusterName + "/" + DistributedStorage.REL_STORE_ROOT; 
     }
     
+    String msgLocation = senseiConf.getString(SENSEI_RELEVANCE_MODEL_STORAGE);
+    if(msgLocation == null)
+    {
+      String clusterName = senseiConf.getString(SENSEI_CLUSTER_NAME);
+      msgLocation = clusterName + "/" + MsgDispatcher.MSG_ROOT; 
+    }    
+    
     String zookeeperURL = senseiConf.getString(SENSEI_CLUSTER_URL);
     int zkTimeOut = senseiConf.getInt(SENSEI_CLUSTER_TIMEOUT, 30000);
     ZkModelDataAccessor zkDataAccessor = new ZkModelDataAccessor(zookeeperURL, zkTimeOut, modelLocation);
     DistributedStorage distributedStorage = new DistributedStorageZKImp(zkDataAccessor);
-    DistributedStorageFactory.initialization(distributedStorage);
     
-    Map<String, RuntimeRelevanceFunctionFactory> allModels = distributedStorage.loadAllModels();
-    InMemModelStorage.injectRuntimeModel(allModels);
+    MsgDispatcher msgDispatcher = new MsgDispatcherImpl(zookeeperURL, zkTimeOut, msgLocation);
+    DistributedStorageFactory.initialization(distributedStorage, msgDispatcher);
+    
+    distributedStorage.loadAllModels();
   }
 
   private void processCustomRelevanceFunctionPlugins(SenseiPluginRegistry pluginRegistry)

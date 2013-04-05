@@ -1,6 +1,7 @@
 package com.senseidb.search.relevance.storage;
 
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,21 +12,42 @@ import org.slf4j.LoggerFactory;
 
 import com.senseidb.search.relevance.RelevanceFunctionBuilder;
 import com.senseidb.search.relevance.RuntimeRelevanceFunction.RuntimeRelevanceFunctionFactory;
+import com.senseidb.search.relevance.message.MsgDispatcher;
+import com.senseidb.search.relevance.message.MsgReceiver;
 
 
 /**
  * Relevance Storage Handler Implementation based on Zookeeper;
  * @author Sheng Guo
  */
-public class DistributedStorageZKImp implements DistributedStorage
+public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
 {
   private static final Logger LOGGER = LoggerFactory.getLogger(DistributedStorageZKImp.class);
   
   private static ZkModelDataAccessor _zkDataAccessor = null;
+  private static MsgDispatcher _msgDispatcher = null;
 
   public DistributedStorageZKImp(ZkModelDataAccessor zkDataAccessor)
   {
     _zkDataAccessor = zkDataAccessor; 
+  }
+  
+  public void init(MsgDispatcher cacheMsgDispatcher) throws IOException
+  {
+    _msgDispatcher = cacheMsgDispatcher;
+    // Put callback registration in initialization after the object is constructed;
+    _msgDispatcher.registerCallback(this);
+  }
+  
+  @Override
+  public void onMessage(String msgType, boolean isSender, String message)
+  {
+    // TODO Auto-generated method stub
+    if(!isSender)
+    {
+      // modify the in-memory model storage only after receiving the message;
+      
+    }
   }
   
   @Override
@@ -57,32 +79,13 @@ public class DistributedStorageZKImp implements DistributedStorage
         LOGGER.error("Can not convert the loaded json string model to json object", e);
       }
     }
+    
+    InMemModelStorage.injectRuntimeModel(models); // load the models into the in-memory storage;
     return models;
   }
 
   @Override
   public void emptyModels() {
     _zkDataAccessor.emptyZookeeperData();
-  }
-
-  
-  public static class DistributedStorageFactory{
-    private DistributedStorageFactory()
-    {
-    }
-    
-    private static DistributedStorage _distributedStorage = null;
-    
-    public static void initialization(DistributedStorage distributedStorage)
-    {
-      _distributedStorage = distributedStorage;
-    }
-    public static DistributedStorage getDistributedStorage() throws Exception
-    {
-      if(_distributedStorage == null)
-        throw new Exception("No distributed model storage accesor was initialized.");
-      else
-        return _distributedStorage;
-    }
   }
 }

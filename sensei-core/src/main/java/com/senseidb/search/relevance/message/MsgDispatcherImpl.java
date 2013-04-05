@@ -34,12 +34,21 @@ public class MsgDispatcherImpl implements MsgDispatcher, Watcher
   private String    _id;        // global identity;
   private ZooKeeper _zk;
   private String    _zkAddress; // zookeeper address;
-  private int       _zkPort;    // zookeeper port;
+  private String    _zkPort;    // zookeeper port;
   private int       _zkTimeOut; // session time out;
   private String    _zkPath;    // zookeeper node path for notification;
   
   
-  public MsgDispatcherImpl(String zkAddress, int zkPort, int zkTimeOut, String zkPath)
+  
+  public MsgDispatcherImpl(String zkURL, int zkTimeOut, String zkPath) throws IOException
+  {
+    this(zkURL.substring(0, zkURL.indexOf(":")), 
+         zkURL.substring(zkURL.indexOf(":")+1).trim(), 
+         zkTimeOut, 
+         zkPath);
+  }
+  
+  public MsgDispatcherImpl(String zkAddress, String zkPort, int zkTimeOut, String zkPath)
   {
     _msgReceivers = new ArrayList<MsgReceiver>();
     _initialized = false;
@@ -190,14 +199,14 @@ public class MsgDispatcherImpl implements MsgDispatcher, Watcher
   }
 
   @Override
-  public void registerCallback(MsgReceiver cache) throws IOException
+  public void registerCallback(MsgReceiver receiver) throws IOException
   {
     if(_initialized == false)
     {
       _logger.error("Not initialized dispatcher to be used!");
       throw new IOException("Message dispatcher has not been initialized to be used! Can not register message receiver.");
     }
-    _msgReceivers.add(cache);    
+    _msgReceivers.add(receiver);    
   }
 
   /* 
@@ -279,7 +288,7 @@ public class MsgDispatcherImpl implements MsgDispatcher, Watcher
   {
     TestReceiver tester = new TestReceiver();
     String zkAddress = "127.0.0.1";
-    int zkPort = 2181;
+    String zkPort = "2181";
     int zkTimeOut = 30000;
     String zkPath = "SenseiDBMessage";
     MsgDispatcherImpl dispatcher = new MsgDispatcherImpl(zkAddress, zkPort, zkTimeOut, zkPath);    
