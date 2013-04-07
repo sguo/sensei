@@ -12,8 +12,8 @@ public interface DistributedStorage {
   
   public void init(MsgDispatcher cacheMsgDispatcher) throws IOException;
   
-  public void addModel(String name, String model, boolean overwrite);
-  public void delModel(String name);
+  public boolean addModel(String name, String model, boolean overwrite) throws IOException;
+  public boolean delModel(String name) throws IOException;
   public Map<String, RuntimeRelevanceFunctionFactory> loadAllModels();
-  public void emptyModels();
+  public boolean emptyAllModels() throws IOException;
 }

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import com.senseidb.search.relevance.RelevanceFunctionBuilder;
 import com.senseidb.search.relevance.RuntimeRelevanceFunction.RuntimeRelevanceFunctionFactory;
+import com.senseidb.search.relevance.message.MsgConstant;
 import com.senseidb.search.relevance.message.MsgDispatcher;
 import com.senseidb.search.relevance.message.MsgReceiver;
 
@@ -51,13 +52,43 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
   }
   
   @Override
-  public void addModel(String name, String model, boolean overwrite) {
-    _zkDataAccessor.addZookeeperData(name, model, overwrite);
+  public boolean addModel(String name, String model, boolean overwrite) throws IOException {
+    // update central storage;
+    boolean success = _zkDataAccessor.addZookeeperData(name, model, overwrite);
+    
+    // update local storage;
+    
+    // send out message;
+    if(success)
+    {
+      String message = name + MsgConstant.MSG_SEPARATOR + model;
+      if(overwrite == true)
+        _msgDispatcher.dispatchMessage(MsgConstant.UPDATE, message);
+      else
+        _msgDispatcher.dispatchMessage(MsgConstant.ADD, message);
+      return true;
+    }
+    else 
+      return false;
   }
 
   @Override
-  public void delModel(String name) {
-    _zkDataAccessor.removeZookeeperData(name);
+  public boolean delModel(String name) throws IOException {
+    // update central storage;
+    boolean success = _zkDataAccessor.removeZookeeperData(name);
+    
+    // update local storage;
+    
+    
+    // send out message;
+    if(success)
+    {
+      String message = name;
+        _msgDispatcher.dispatchMessage(MsgConstant.DEL, message);
+      return true;
+    }
+    else 
+      return false;
   }
 
   @Override
@@ -85,7 +116,20 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
   }
 
   @Override
-  public void emptyModels() {
-    _zkDataAccessor.emptyZookeeperData();
+  public boolean emptyAllModels() throws IOException {
+    // update central storage;
+    boolean success = _zkDataAccessor.emptyZookeeperData();
+    
+    // update local storage;
+    
+    // send out message;
+    if(success)
+    {
+      String message = "";
+        _msgDispatcher.dispatchMessage(MsgConstant.EMPTY, message);
+      return true;
+    }
+    else 
+      return false;
   }
 }

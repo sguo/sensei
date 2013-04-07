@@ -5,7 +5,7 @@ public interface MsgConstant
 {
 
   // Message meta data separator
-  public static final String  MSG_SEPARATOR   = ":";
+  public static final String  MSG_SEPARATOR   = "@SEP"; //refactor this part later;
   
   /*
    * Message types to be sent out. 
@@ -17,7 +17,8 @@ public interface MsgConstant
    * */
 
   public static final String    NONE          = "none";  // dummy message for anything requires no action;
-  public static final String    ADD           = "add";    // add one relevance model;
+  public static final String    ADD           = "add";    // add one relevance model, won't overwrite;
+  public static final String    UPDATE        = "update"; // update one relevance model, will overwrite;
   public static final String    DEL           = "del";    // delete one relevance model;
   public static final String    EMPTY         = "empty";  // empty all the relevance models;
   

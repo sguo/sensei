@@ -156,7 +156,7 @@ public class ZkModelDataAccessor
     return lhm;
   }
   
-  public void emptyZookeeperData()
+  public boolean emptyZookeeperData()
   {
     //TODO need to get lock;
     try{
@@ -165,10 +165,12 @@ public class ZkModelDataAccessor
       {
         _zk.delete(_zkPath + "/" + name, -1);
       }
+      return true;
     }catch(Exception e)
     {
       LOGGER.error("error when deleting all the models.", e);
     }
+    return false;
   }
   
   public boolean addZookeeperData(String name, String value, boolean overwrite)
@@ -198,7 +200,7 @@ public class ZkModelDataAccessor
     return false;
   }
   
-  public void removeZookeeperData(String name)
+  public boolean removeZookeeperData(String name)
   {
     //TODO need to get lock;
     try{
@@ -208,10 +210,12 @@ public class ZkModelDataAccessor
       {    
         _zk.delete(_zkPath + "/" + name, -1);
       }
+      return true;
     }catch(Exception e)
     {
       LOGGER.error("error when deleting model.", e);
     }
+    return false;
   }
   
   public static void main(String[] args) throws IOException
