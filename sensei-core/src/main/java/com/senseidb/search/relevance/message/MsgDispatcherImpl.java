@@ -159,9 +159,7 @@ public class MsgDispatcherImpl implements MsgDispatcher, Watcher
     }
 
     // Currently we only support three types of relevance model operation message;
-    if(msgType.equals(MsgConstant.ADD) ||
-        msgType.equals(MsgConstant.DEL) ||
-        msgType.equals(MsgConstant.EMPTY))
+    if(msgType.startsWith(MsgConstant.MODEL_OP_PREFIX))
     {
       try
       {
@@ -252,7 +250,7 @@ public class MsgDispatcherImpl implements MsgDispatcher, Watcher
         int idx2 = rawMessage.indexOf(MsgConstant.MSG_SEPARATOR, idx1+1);
         String id = rawMessage.substring(idx1+1, idx2);      // sender's ID;
         String message = ( (idx2+1) == rawMessage.length())? "": rawMessage.substring(idx2+1);  // message payload. (could be empty string)
-        onMessage(msgType, _id.equals(id), message);  // for now only consider invalidation message;
+        onMessage(msgType, _id.equals(id), message);
       }
       catch (KeeperException e)
       {

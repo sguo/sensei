@@ -43,11 +43,15 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
   @Override
   public void onMessage(String msgType, boolean isSender, String message)
   {
-    // TODO Auto-generated method stub
     if(!isSender)
     {
-      // modify the in-memory model storage only after receiving the message;
-      
+      // modify the in-memory model storage only after receiving the message
+      // and the receiver is not the message sender;
+      try {
+        handleLocalStorage(msgType, message);
+      } catch (IOException e) {
+        LOGGER.error("Can not handle notified model change message. Type:" + msgType + " message:" + message);
+      }
     }
   }
   
@@ -55,36 +59,40 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
   public boolean addModel(String name, String model, boolean overwrite) throws IOException {
     // update central storage;
     boolean success = _zkDataAccessor.addZookeeperData(name, model, overwrite);
-    
-    // update local storage;
-    
-    // send out message;
+
     if(success)
     {
+      String msgType = (overwrite == true) ? MsgConstant.UPDATE : MsgConstant.ADD;
       String message = name + MsgConstant.MSG_SEPARATOR + model;
-      if(overwrite == true)
-        _msgDispatcher.dispatchMessage(MsgConstant.UPDATE, message);
-      else
-        _msgDispatcher.dispatchMessage(MsgConstant.ADD, message);
+
+      // update local storage;
+      handleLocalStorage(msgType, message);
+      
+      // send out message;
+      _msgDispatcher.dispatchMessage(msgType, message);
+      
       return true;
     }
     else 
       return false;
   }
 
+
   @Override
   public boolean delModel(String name) throws IOException {
     // update central storage;
     boolean success = _zkDataAccessor.removeZookeeperData(name);
     
-    // update local storage;
-    
-    
-    // send out message;
     if(success)
     {
+      String msgType = MsgConstant.DEL;
       String message = name;
-        _msgDispatcher.dispatchMessage(MsgConstant.DEL, message);
+      
+      // update local storage;
+      handleLocalStorage(msgType, message);
+      
+      // send out message;
+      _msgDispatcher.dispatchMessage(msgType, message);
       return true;
     }
     else 
@@ -111,7 +119,7 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
       }
     }
     
-    InMemModelStorage.injectRuntimeModel(models); // load the models into the in-memory storage;
+    InMemModelStorage.injectRuntimeModel(models, true); // load the models into the in-memory storage;
     return models;
   }
 
@@ -120,16 +128,73 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
     // update central storage;
     boolean success = _zkDataAccessor.emptyZookeeperData();
     
-    // update local storage;
-    
-    // send out message;
     if(success)
     {
+      String msgType = MsgConstant.EMPTY;
       String message = "";
-        _msgDispatcher.dispatchMessage(MsgConstant.EMPTY, message);
+      
+      // update local storage;
+      handleLocalStorage(msgType, message);
+      
+      // send out message;
+      _msgDispatcher.dispatchMessage(msgType, message);
+      
       return true;
     }
     else 
       return false;
+  }
+  
+
+  private void handleLocalStorage(String msgType, String message) throws IOException
+  {
+    if(msgType.equals(MsgConstant.DEL))
+    {
+      InMemModelStorage.delPreloadedModel(message);
+      InMemModelStorage.delRuntimeModel(message);
+    }
+    else if(msgType.equals(MsgConstant.ADD))
+    {
+      String name = getModelName(message);
+      String model = getModelJSONString(message);
+      try{
+        JSONObject modelJson = new JSONObject(model);
+        RuntimeRelevanceFunctionFactory rrf = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
+        InMemModelStorage.injectRuntimeModel(name, rrf, false);
+      }catch(Exception e)
+      {
+        throw new IOException("can not create the model factory.");
+      }
+    }
+    else if(msgType.equals(MsgConstant.UPDATE))
+    {
+      String name = getModelName(message);
+      String model = getModelJSONString(message);
+      try{
+        JSONObject modelJson = new JSONObject(model);
+        RuntimeRelevanceFunctionFactory rrf = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
+        InMemModelStorage.injectRuntimeModel(name, rrf, true);
+      }catch(Exception e)
+      {
+        throw new IOException("can not create the model factory.");
+      }
+    }
+    else if(msgType.equals(MsgConstant.EMPTY))
+    {
+      InMemModelStorage.delAllPreloadedModel();
+      InMemModelStorage.delAllRuntimeModel();
+    }
+    else
+      LOGGER.error("unsupported model operation: " + msgType);
+  }
+
+  private String getModelName(String message) {
+    int loc = message.indexOf(MsgConstant.MSG_SEPARATOR);
+    return message.substring(0, loc);
+  }
+  
+  private String getModelJSONString(String message) {
+    int loc = message.indexOf(MsgConstant.MSG_SEPARATOR);
+    return message.substring(loc + MsgConstant.MSG_SEPARATOR.length());
   }
 }

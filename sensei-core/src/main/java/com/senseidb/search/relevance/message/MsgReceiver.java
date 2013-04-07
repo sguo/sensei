@@ -2,6 +2,7 @@ package com.senseidb.search.relevance.message;
 
 
 
+
 public interface MsgReceiver
 {
 

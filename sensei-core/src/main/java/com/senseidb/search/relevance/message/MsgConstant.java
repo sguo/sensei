@@ -16,10 +16,13 @@ public interface MsgConstant
    * 
    * */
 
-  public static final String    NONE          = "none";  // dummy message for anything requires no action;
-  public static final String    ADD           = "add";    // add one relevance model, won't overwrite;
-  public static final String    UPDATE        = "update"; // update one relevance model, will overwrite;
-  public static final String    DEL           = "del";    // delete one relevance model;
-  public static final String    EMPTY         = "empty";  // empty all the relevance models;
+  public static final String    MODEL_OP_PREFIX   = "model_";      // attn: all model operation name must have this prefix;
+  public static final String    NONE              = "model_none";  // dummy message for anything requires no action;
+  public static final String    ADD               = "model_add";    // add one relevance model, won't overwrite;
+  public static final String    UPDATE            = "model_update"; // update one relevance model, will overwrite;
+  public static final String    DEL               = "model_del";    // delete one relevance model;
+  public static final String    EMPTY             = "model_empty";  // empty all the relevance models;
+  
+  
   
 }

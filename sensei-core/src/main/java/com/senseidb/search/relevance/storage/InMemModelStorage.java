@@ -3,8 +3,6 @@ package com.senseidb.search.relevance.storage;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.senseidb.search.relevance.CustomRelevanceFunction;
-import com.senseidb.search.relevance.RuntimeRelevanceFunction;
 import com.senseidb.search.relevance.CustomRelevanceFunction.CustomRelevanceFunctionFactory;
 import com.senseidb.search.relevance.RuntimeRelevanceFunction.RuntimeRelevanceFunctionFactory;
 
@@ -27,21 +25,7 @@ public class InMemModelStorage
   private static Map<String, RuntimeRelevanceFunctionFactory> runtimeCRFMap = new HashMap<String, RuntimeRelevanceFunctionFactory>();
   
   
-  
-  public static void injectPreloadedModel(String name, CustomRelevanceFunctionFactory crf)
-  {
-    preloadedCRFMap.put(name, crf);
-  }
-  
-  public static void injectRuntimeModel(String name, RuntimeRelevanceFunctionFactory rrf)
-  {
-    runtimeCRFMap.put(name, rrf);
-  }
-  
-  public static void injectRuntimeModel(Map<String, RuntimeRelevanceFunctionFactory> crfMap)
-  {
-    runtimeCRFMap.putAll(crfMap);
-  }
+  // (1) Read operations;
   
   public static boolean hasRuntimeModel(String modelName)
   {
@@ -64,4 +48,70 @@ public class InMemModelStorage
   }
   
   
+  // (2) write operations;
+  public static synchronized boolean injectPreloadedModel(String name, CustomRelevanceFunctionFactory crf, boolean overwrite)
+  {
+    if(preloadedCRFMap.containsKey(name) && (overwrite == false))
+      return false;
+    else
+    {
+      preloadedCRFMap.put(name, crf);
+      return true;
+    }
+  }
+  
+  public static synchronized boolean injectRuntimeModel(String name, RuntimeRelevanceFunctionFactory rrf, boolean overwrite)
+  {
+    if(runtimeCRFMap.containsKey(name) && (overwrite == false))
+      return false;
+    else
+    {
+      runtimeCRFMap.put(name, rrf);
+      return true;
+    }
+  }
+  
+  public static synchronized boolean injectRuntimeModel(Map<String, RuntimeRelevanceFunctionFactory> crfMap, boolean overwrite)
+  {
+    boolean conflict = false;
+    for(Map.Entry<String, RuntimeRelevanceFunctionFactory> entry : crfMap.entrySet())
+    {
+      String name = entry.getKey();
+      if(runtimeCRFMap.containsKey(name))
+      {
+        conflict = true;
+        break;
+      }
+    }
+
+    if(conflict == true && overwrite == false)
+    {
+      return false;
+    }
+    else
+    {
+      runtimeCRFMap.putAll(crfMap);
+      return true;
+    }
+  }
+  
+  public static synchronized void delRuntimeModel(String modelName)
+  {
+     runtimeCRFMap.remove(modelName);
+  }
+  
+  public static synchronized void delPreloadedModel(String modelName)
+  {
+     preloadedCRFMap.remove(modelName);
+  }
+  
+  public static synchronized void delAllPreloadedModel()
+  {
+     preloadedCRFMap.clear();
+  }
+  
+  public static synchronized void delAllRuntimeModel()
+  {
+    runtimeCRFMap.clear();
+  }
 }

@@ -383,7 +383,7 @@ public class SenseiServerBuilder implements SenseiConfParams{
     {
       String name = it.next();
       CustomRelevanceFunctionFactory crf = map.get(name);
-      InMemModelStorage.injectPreloadedModel(name, crf);
+      InMemModelStorage.injectPreloadedModel(name, crf, true);
     }
   }
   

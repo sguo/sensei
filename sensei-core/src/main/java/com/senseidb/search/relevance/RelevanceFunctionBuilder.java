@@ -12,6 +12,8 @@ import com.senseidb.search.relevance.impl.CompilationHelper.DataTable;
 import com.senseidb.search.relevance.impl.CustomMathModel;
 import com.senseidb.search.relevance.impl.RelevanceException;
 import com.senseidb.search.relevance.impl.RelevanceJSONConstants;
+import com.senseidb.search.relevance.storage.DistributedStorage;
+import com.senseidb.search.relevance.storage.DistributedStorageFactory;
 import com.senseidb.search.relevance.storage.InMemModelStorage;
 import com.senseidb.search.req.ErrorType;
 
@@ -117,7 +119,8 @@ public class RelevanceFunctionBuilder
       RuntimeRelevanceFunctionFactory rrfFactory = (RuntimeRelevanceFunctionFactory) buildModelFactoryFromModelJSON(modelJson);
       RuntimeRelevanceFunction sm = (RuntimeRelevanceFunction) rrfFactory.build();
       
-      //store the model if specified;
+      // Store the model if specified, this should be specified in a very high frequent way;
+      // This is equal to the "CREATE RELEVACE MODEL" SQL-style statement.
       if(modelJson.has(RelevanceJSONConstants.KW_SAVE_AS))
       {
 //        "save_as":{
@@ -133,7 +136,13 @@ public class RelevanceFunctionBuilder
         if((InMemModelStorage.hasRuntimeModel(newRuntimeName) || InMemModelStorage.hasPreloadedModel(newRuntimeName)) && (overwrite == false))
           throw new IllegalArgumentException("the runtime model name " + newRuntimeName + " already exists, or you did not ask to overwrite the old model. Set \"overwrite\":true in the json will replace the old model if you want."); 
 
-        InMemModelStorage.injectRuntimeModel(newRuntimeName, rrfFactory);
+//        InMemModelStorage.injectRuntimeModel(newRuntimeName, rrfFactory, overwrite);
+        try {
+          DistributedStorage ds = DistributedStorageFactory.getDistributedStorage();
+          ds.addModel(newRuntimeName, modelJson.toString(), overwrite);
+        } catch (Exception e) {
+          throw new IllegalArgumentException("distributed relevance model storage is not initialized.");
+        }
       }
       
       return  sm;     
