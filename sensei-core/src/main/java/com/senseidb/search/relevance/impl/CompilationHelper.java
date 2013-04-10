@@ -1159,5 +1159,52 @@ public class CompilationHelper
       lls_params = new LinkedList<String>();
       useInnerScore = true;
     }
+    
+    @Override
+    public  int hashCode()
+    {
+      int hashCode = 1;
+      hashCode = 31*hashCode + hm_var.hashCode();
+      hashCode = 31*hashCode + hm_type.hashCode();
+      hashCode = 31*hashCode + hm_symbol_facet.hashCode();
+      hashCode = 31*hashCode + hm_facet_index.hashCode();
+      hashCode = 31*hashCode + hm_symbol_mfacet.hashCode();
+      hashCode = 31*hashCode + hm_mfacet_index.hashCode();
+      hashCode = 31*hashCode + hm_symbol_afacet.hashCode();
+      hashCode = 31*hashCode + hm_afacet_index.hashCode();
+      hashCode = 31*hashCode + lls_params.hashCode();
+      hashCode = 31*hashCode + (funcBody==null ? 0 : funcBody.hashCode());
+      hashCode = 31*hashCode + (classIDString==null ? 0 : classIDString.hashCode());
+      hashCode = (useInnerScore == true) ? 31*hashCode : hashCode;
+      return hashCode;
+    }
+    
+    @Override
+    public boolean equals(Object o)
+    {
+      if (o == this)
+        return true;
+
+      if (!(o instanceof DataTable))
+        return false;
+
+      DataTable d = (DataTable)o;
+      if( hm_var.equals(d.hm_var) &&
+          hm_type.equals(d.hm_type) &&
+          hm_symbol_facet.equals(d.hm_symbol_facet) &&
+          hm_facet_index.equals(d.hm_facet_index) &&
+          hm_symbol_mfacet.equals(d.hm_symbol_mfacet) &&
+          hm_mfacet_index.equals(d.hm_mfacet_index) &&
+          hm_symbol_afacet.equals(d.hm_symbol_afacet) &&
+          hm_afacet_index.equals(d.hm_afacet_index) &&
+          lls_params.equals(d.lls_params) &&
+          ((funcBody == null && d.funcBody == null) || (funcBody != null && funcBody.equals(d.funcBody))) &&
+          ((classIDString == null && d.classIDString == null) || (classIDString != null && classIDString.equals(d.classIDString))) &&
+          useInnerScore == d.useInnerScore
+          )
+        return true;
+      
+      return false;
+    }
   }
 }

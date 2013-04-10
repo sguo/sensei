@@ -57,6 +57,10 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
   
   @Override
   public boolean addModel(String name, String model, boolean overwrite) throws IOException {
+    // prevent user-side mistake of sending out too many same model create statement;
+    if(checkModelExistence(name, model))
+      return true;
+    
     // update central storage;
     boolean success = _zkDataAccessor.addZookeeperData(name, model, overwrite);
 
@@ -80,6 +84,8 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
 
   @Override
   public boolean delModel(String name) throws IOException {
+    if(!checkModelExistence(name))
+      return true;
     // update central storage;
     boolean success = _zkDataAccessor.removeZookeeperData(name);
     
@@ -196,5 +202,24 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
   private String getModelJSONString(String message) {
     int loc = message.indexOf(MsgConstant.MSG_SEPARATOR);
     return message.substring(loc + MsgConstant.MSG_SEPARATOR.length());
+  }
+  
+
+  private boolean checkModelExistence(String name, String model) throws IOException {
+    try{
+      JSONObject modelJson = new JSONObject(model);
+      RuntimeRelevanceFunctionFactory rrfNew = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
+      RuntimeRelevanceFunctionFactory rrfOld = InMemModelStorage.getRuntimeModel(name);
+      if(rrfOld != null && rrfOld.equals(rrfNew))
+        return true;
+    }catch(Exception e)
+    {
+      throw new IOException("can not create the model factory.");
+    }
+    return false;
+  }
+  
+  private boolean checkModelExistence(String name) {
+    return InMemModelStorage.hasRuntimeModel(name);
   }
 }

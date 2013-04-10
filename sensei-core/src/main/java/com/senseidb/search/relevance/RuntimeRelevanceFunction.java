@@ -730,6 +730,23 @@ public class RuntimeRelevanceFunction extends CustomRelevanceFunction
       return (CustomRelevanceFunction) _rrf.getCopy();
     }
     
+    @Override
+    public int hashCode()
+    {
+      return _rrf._dt.hashCode();
+    }
+    
+    @Override
+    public boolean equals(Object o)
+    {
+      if (o == this)
+        return true;
+
+      if (!(o instanceof RuntimeRelevanceFunctionFactory))
+        return false;
+      
+      RuntimeRelevanceFunctionFactory r = (RuntimeRelevanceFunctionFactory)o;
+      return this._rrf._dt.equals(r._rrf._dt);
+    }
   }
-  
 }
