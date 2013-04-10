@@ -1164,7 +1164,7 @@ public class CompilationHelper
     public  int hashCode()
     {
       int hashCode = 1;
-      hashCode = 31*hashCode + hm_var.hashCode();
+      hashCode = 31*hashCode + hm_var.keySet().hashCode();
       hashCode = 31*hashCode + hm_type.hashCode();
       hashCode = 31*hashCode + hm_symbol_facet.hashCode();
       hashCode = 31*hashCode + hm_facet_index.hashCode();
@@ -1189,7 +1189,8 @@ public class CompilationHelper
         return false;
 
       DataTable d = (DataTable)o;
-      if( hm_var.equals(d.hm_var) &&
+      if( 
+          hm_var.keySet().equals(d.hm_var.keySet()) &&
           hm_type.equals(d.hm_type) &&
           hm_symbol_facet.equals(d.hm_symbol_facet) &&
           hm_facet_index.equals(d.hm_facet_index) &&
