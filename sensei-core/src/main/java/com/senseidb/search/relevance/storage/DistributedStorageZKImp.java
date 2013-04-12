@@ -4,6 +4,8 @@ package com.senseidb.search.relevance.storage;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -27,6 +29,9 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
   
   private static ZkModelDataAccessor _zkDataAccessor = null;
   private static MsgDispatcher _msgDispatcher = null;
+  
+  private static Lock _exeOrderLock = new ReentrantLock();
+  private static Lock _inMemStoreLock = new ReentrantLock();
 
   public DistributedStorageZKImp(ZkModelDataAccessor zkDataAccessor)
   {
@@ -57,141 +62,180 @@ public class DistributedStorageZKImp implements DistributedStorage, MsgReceiver
   
   @Override
   public boolean addModel(String name, String model, boolean overwrite) throws IOException {
-    // prevent user-side mistake of sending out too many same model create statement;
-    if(checkModelExistence(name, model))
-      return true;
-    
-    // update central storage;
-    boolean success = _zkDataAccessor.addZookeeperData(name, model, overwrite);
-
-    if(success)
+    _exeOrderLock.lock();
+    try
     {
-      String msgType = (overwrite == true) ? MsgConstant.UPDATE : MsgConstant.ADD;
-      String message = name + MsgConstant.MSG_SEPARATOR + model;
-
-      // update local storage;
-      handleLocalStorage(msgType, message);
+      // prevent user-side mistake of sending out too many same model create statement;
+      if(checkModelExistence(name, model))
+        return true;
       
-      // send out message;
-      _msgDispatcher.dispatchMessage(msgType, message);
-      
-      return true;
+      // update central storage;
+      boolean success = _zkDataAccessor.addZookeeperData(name, model, overwrite);
+  
+      if(success)
+      {
+        String msgType = (overwrite == true) ? MsgConstant.UPDATE : MsgConstant.ADD;
+        String message = name + MsgConstant.MSG_SEPARATOR + model;
+  
+        // update local storage;
+        handleLocalStorage(msgType, message);
+        
+        // send out message;
+        _msgDispatcher.dispatchMessage(msgType, message);
+        
+        return true;
+      }
+      else 
+        return false;
     }
-    else 
-      return false;
+    finally
+    {
+      _exeOrderLock.unlock();
+    }
   }
 
 
   @Override
   public boolean delModel(String name) throws IOException {
-    if(!checkModelExistence(name))
-      return true;
-    // update central storage;
-    boolean success = _zkDataAccessor.removeZookeeperData(name);
-    
-    if(success)
+    _exeOrderLock.lock();
+    try
     {
-      String msgType = MsgConstant.DEL;
-      String message = name;
+      if(!checkModelExistence(name))
+        return true;
+      // update central storage;
+      boolean success = _zkDataAccessor.removeZookeeperData(name);
       
-      // update local storage;
-      handleLocalStorage(msgType, message);
-      
-      // send out message;
-      _msgDispatcher.dispatchMessage(msgType, message);
-      return true;
+      if(success)
+      {
+        String msgType = MsgConstant.DEL;
+        String message = name;
+        
+        // update local storage;
+        handleLocalStorage(msgType, message);
+        
+        // send out message;
+        _msgDispatcher.dispatchMessage(msgType, message);
+        return true;
+      }
+      else 
+        return false;
     }
-    else 
-      return false;
+    finally
+    {
+      _exeOrderLock.unlock();
+    }
   }
 
   @Override
   public Map<String, RuntimeRelevanceFunctionFactory> loadAllModels() {
-    
-    HashMap<String, String> jsonModels = _zkDataAccessor.getZookeeperData();
-    Map<String, RuntimeRelevanceFunctionFactory> models = new HashMap<String, RuntimeRelevanceFunctionFactory>();
-    for(Map.Entry<String, String> entry : jsonModels.entrySet())
+    _exeOrderLock.lock();
+    try
     {
-      String modelName = entry.getKey();
-      String modelJsonString = entry.getValue();
-      
-      JSONObject modelJson;
-      try {
-        modelJson = new JSONObject(modelJsonString);
-        RuntimeRelevanceFunctionFactory rrfFactory = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
-        models.put(modelName, rrfFactory);
-      } catch (JSONException e) {
-        LOGGER.error("Can not convert the loaded json string model to json object", e);
+      HashMap<String, String> jsonModels = _zkDataAccessor.getZookeeperData();
+      Map<String, RuntimeRelevanceFunctionFactory> models = new HashMap<String, RuntimeRelevanceFunctionFactory>();
+      for(Map.Entry<String, String> entry : jsonModels.entrySet())
+      {
+        String modelName = entry.getKey();
+        String modelJsonString = entry.getValue();
+        
+        JSONObject modelJson;
+        try {
+          modelJson = new JSONObject(modelJsonString);
+          RuntimeRelevanceFunctionFactory rrfFactory = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
+          models.put(modelName, rrfFactory);
+        } catch (JSONException e) {
+          LOGGER.error("Can not convert the loaded json string model to json object", e);
+        }
       }
+      
+      InMemModelStorage.injectRuntimeModel(models, true); // load the models into the in-memory storage;
+      return models;
     }
-    
-    InMemModelStorage.injectRuntimeModel(models, true); // load the models into the in-memory storage;
-    return models;
+    finally
+    {
+      _exeOrderLock.unlock();
+    }
   }
 
   @Override
   public boolean emptyAllModels() throws IOException {
-    // update central storage;
-    boolean success = _zkDataAccessor.emptyZookeeperData();
-    
-    if(success)
+    _exeOrderLock.lock();
+    try
     {
-      String msgType = MsgConstant.EMPTY;
-      String message = "";
+      // update central storage;
+      boolean success = _zkDataAccessor.emptyZookeeperData();
       
-      // update local storage;
-      handleLocalStorage(msgType, message);
-      
-      // send out message;
-      _msgDispatcher.dispatchMessage(msgType, message);
-      
-      return true;
+      if(success)
+      {
+        String msgType = MsgConstant.EMPTY;
+        String message = "";
+        
+        // update local storage;
+        handleLocalStorage(msgType, message);
+        
+        // send out message;
+        _msgDispatcher.dispatchMessage(msgType, message);
+        
+        return true;
+      }
+      else 
+        return false;
     }
-    else 
-      return false;
+    finally
+    {
+      _exeOrderLock.unlock();
+    }
   }
   
 
   private void handleLocalStorage(String msgType, String message) throws IOException
   {
-    if(msgType.equals(MsgConstant.DEL))
+    _inMemStoreLock.lock();
+    try
     {
-      InMemModelStorage.delPreloadedModel(message);
-      InMemModelStorage.delRuntimeModel(message);
-    }
-    else if(msgType.equals(MsgConstant.ADD))
-    {
-      String name = getModelName(message);
-      String model = getModelJSONString(message);
-      try{
-        JSONObject modelJson = new JSONObject(model);
-        RuntimeRelevanceFunctionFactory rrf = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
-        InMemModelStorage.injectRuntimeModel(name, rrf, false);
-      }catch(Exception e)
+      if(msgType.equals(MsgConstant.DEL))
       {
-        throw new IOException("can not create the model factory.");
+        InMemModelStorage.delPreloadedModel(message);
+        InMemModelStorage.delRuntimeModel(message);
       }
-    }
-    else if(msgType.equals(MsgConstant.UPDATE))
-    {
-      String name = getModelName(message);
-      String model = getModelJSONString(message);
-      try{
-        JSONObject modelJson = new JSONObject(model);
-        RuntimeRelevanceFunctionFactory rrf = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
-        InMemModelStorage.injectRuntimeModel(name, rrf, true);
-      }catch(Exception e)
+      else if(msgType.equals(MsgConstant.ADD))
       {
-        throw new IOException("can not create the model factory.");
+        String name = getModelName(message);
+        String model = getModelJSONString(message);
+        try{
+          JSONObject modelJson = new JSONObject(model);
+          RuntimeRelevanceFunctionFactory rrf = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
+          InMemModelStorage.injectRuntimeModel(name, rrf, false);
+        }catch(Exception e)
+        {
+          throw new IOException("can not create the model factory.");
+        }
       }
+      else if(msgType.equals(MsgConstant.UPDATE))
+      {
+        String name = getModelName(message);
+        String model = getModelJSONString(message);
+        try{
+          JSONObject modelJson = new JSONObject(model);
+          RuntimeRelevanceFunctionFactory rrf = (RuntimeRelevanceFunctionFactory) RelevanceFunctionBuilder.buildModelFactoryFromModelJSON(modelJson);
+          InMemModelStorage.injectRuntimeModel(name, rrf, true);
+        }catch(Exception e)
+        {
+          throw new IOException("can not create the model factory.");
+        }
+      }
+      else if(msgType.equals(MsgConstant.EMPTY))
+      {
+        InMemModelStorage.delAllPreloadedModel();
+        InMemModelStorage.delAllRuntimeModel();
+      }
+      else
+        LOGGER.error("unsupported model operation: " + msgType);
     }
-    else if(msgType.equals(MsgConstant.EMPTY))
+    finally
     {
-      InMemModelStorage.delAllPreloadedModel();
-      InMemModelStorage.delAllRuntimeModel();
+      _inMemStoreLock.unlock();
     }
-    else
-      LOGGER.error("unsupported model operation: " + msgType);
   }
 
   private String getModelName(String message) {

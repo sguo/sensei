@@ -95,17 +95,21 @@ public class RelevanceFunctionBuilder
       
       if(InMemModelStorage.hasPreloadedModel(modelName))
       {
-        CustomRelevanceFunctionFactory crfFactory = InMemModelStorage.getPreloadedModel(modelName); 
+        CustomRelevanceFunctionFactory crfFactory = InMemModelStorage.getPreloadedModel(modelName);
+        if(crfFactory == null)  // in case the model has been modified;
+          throw new JSONException("No such preloaded model is registered: " + modelName);
         return crfFactory.build();
       }
       else if (InMemModelStorage.hasRuntimeModel(modelName))
       {
         RuntimeRelevanceFunctionFactory rrfFactory = InMemModelStorage.getRuntimeModel(modelName);
+        if(rrfFactory == null) // in case the model has been modified;
+          throw new JSONException("No such runtime model is registered: " + modelName);
         return rrfFactory.build();
       }
       else
       {
-        throw new JSONException("No such model (CustomRelevanceFunctionFactory plugin) is registered: " + modelName);
+        throw new JSONException("No such model is registered: " + modelName);
       }
     }
     
